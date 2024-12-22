@@ -1,5 +1,88 @@
 # SRJV
- 
+
+## Notes from chab (macOs)
+
+```
+python3 runme.py -i input/v3 -o output/v3
+```
+
+- i recommend using versions in order to go back to earlier samples/fsz if needed (in each version, you may test different loop points, eq, gains, sample rate, etc.)
+- puts samples/sfz in folder input/v1, v2, etc and "build" the bin into output/v1.bin, output/v2.bin, etc.
+
+## Notes from chab on preparing samples/sfz (macOs)
+
+### Tools :
+
+- Audacity: https://www.audacityteam.org/
+- Endless Wav: https://www.bjoernbojahr.de/endlesswav.html (fantastic app! thanks to Björn Bojahr)
+- HexFiend (optional): https://hexfiend.com/
+
+### 1. Preparing the samples :
+
+- in Audacity: open sample wav file > set project sample rate to 32k (to obtain a smaller file) > convert to mono > trim (fade out the last few samples to avoid clicks), export in WAV 24bit PCM
+- in Endless WAV: edit the loop with fades > set the root key > select the checkbox "truncate at end", save (my preferences: "Reduce chunks" is checked only)
+
+This should make a WAV file including a "smpl" section describing the loop points and root key (you can find "smpl" with a hex editor. e.g. HexFiend)
+
+### 2. Preparing the sfz :
+
+- text editor: enter a ```<region>``` for each mapping
+
+IMPORTANT: Apparently if the wav files contains a "smpl" section, 3 attributes are read from the "smpl" data and NOT from the sfz (pitch_keycenter, loop_start, loop_end) (search "dataChunkValid" in ROMImport.py)
+
+example with a single region
+
+```
+<region>
+sample=diva_supersaw_60.wav
+lokey=0
+hikey=127
+pitch_keycenter=60
+loop_start=0
+loop_end=48857
+```
+
+Since my loop points and root key were saved in a "smpl" chunk (by Endless WAV), 3 attributes attibutes are actually useless here : pitch_keycenter, loop_start and loop_end (i kept them there anyway).
+
+Example with multiple regions
+(2 regions taken from "AP Str Ens A.sfz" extracted from vintage synth card (those samples do NOT contain "smpl" data, so loop/pitch_keycenter are taken from the sfz)
+
+```
+<region>
+sample=arpstr841.wav
+region_label=arpstr841.wav
+amplitude=85.039
+lokey=0
+hikey=54
+pitch_keycenter=58
+tune=10.938
+delay_samples=0
+offset=0
+loop_start=69
+loop_end=29222
+loop_type=alternate
+looptune=0.0
+loop_mode=loop_continuous
+
+<region>
+sample=arpstr842.wav
+region_label=arpstr842.wav
+amplitude=90.551
+lokey=55
+hikey=60
+pitch_keycenter=65
+tune=8.984
+delay_samples=0
+offset=0
+loop_start=92
+loop_end=20918
+loop_type=alternate
+looptune=0.0
+loop_mode=loop_continuous
+```
+
+
+
 ## Info
 
 This toolkit should make it feasible to import custom samples into an SR-JV80 ROM image. To make full use of this, it's ideal you also have a way to burn the created images onto an SR-JV80 card. The recommendation is the ROMulator tool by Sector101:

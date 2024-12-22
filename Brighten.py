@@ -110,9 +110,9 @@ def run(fname):
     newWav.close()
 
     return
-    
+
 folder = input("Enter a relative folder for samples to brighten: ")
-for file in os.listdir(folder):
+for file in os.listdir(os.path.dirname(os.path.abspath(__file__)) + '/' + folder):
     if file.endswith(".wav"):
         os.chdir(folder)
         run(file)

@@ -24,7 +24,7 @@ def run(tmpDir, PatchImport, VerboseMode):
     template.write('{0:02d}'.format(today.day).encode('utf-8'))
     template.seek(64)
     romSR = 32000
-    
+
     template.seek(32768)
     templateCoef.seek(1024)
     sampleTable = open("SampleTable.bin", "wb")
@@ -49,7 +49,7 @@ def run(tmpDir, PatchImport, VerboseMode):
     rootKey = []
     fineTune = []
     loopTune = []
-    
+
     sampleCount = -1
     sampleIDs = []
     multiCount = -1
@@ -60,7 +60,7 @@ def run(tmpDir, PatchImport, VerboseMode):
     counter = 0
     dupCheck = []
     dataChunkList = []
-    
+
     for newBlock in range(8):
         for filename in sorted(os.listdir(os.getcwd()), key=os.path.getsize, reverse=True):
             if filename.endswith(".wav"):
@@ -68,7 +68,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                     continue
 
                 refd = False
-                
+
                 for multiname in sorted(os.listdir(os.getcwd())):
                     if multiCount == 254 : continue
                     if multiname.endswith(".sfz"):
@@ -80,22 +80,27 @@ def run(tmpDir, PatchImport, VerboseMode):
 
                 if refd == False:
                     continue
-                
+
                 fineTuneResult = 1024
                 loopTuneResult = 1024
-    
+
                 dataChunkValid = False
                 audioFile = open(filename, "rb")
                 audioRead = audioFile.read()
                 audioFile.seek(34)
                 bitRate = int.from_bytes(audioFile.read(2), "little") / 8
-            
+
+                print(">> processing file: " + filename + " / bitrate " + str(bitRate))
+                print("==============================================================")
+
                 dataOff = audioRead.find(b'data')
                 audioFile.seek(dataOff + 4)
                 dataSz = int.from_bytes(audioFile.read(4), "little")
 
                 finalSample = 0
                 chnkOff = audioRead.find(b'smpl')
+                print(">>> dataOff:" + str(dataOff))
+                print(">>> chnkOff:" + str(chnkOff))
                 if dataOff < chnkOff and chnkOff < dataOff + dataSz:
                     chnkOff = audioRead.find(b'smpl', 0, dataOff)
                     if chnkOff == -1:
@@ -105,18 +110,18 @@ def run(tmpDir, PatchImport, VerboseMode):
                     finalSample = int.from_bytes(audioFile.read(4), "little")
                 else:
                     finalSample = (dataSz / bitRate)
-                
+
                 if template.tell() + finalSample + (finalSample % 32) >= 1048576 * (newBlock + 1):
                     audioFile.close()
                     continue
-                
-                print(filename)
+
+                #print(filename)
                 dupPreCheck.append("=" + filename)
 
                 smplLoopMax = 0
                 smplEndMax = 0
                 template.seek(math.ceil(template.tell() / 32) * 32)
-                
+
                 if chnkOff >= 0:
                     dataChunkValid = True
                     sampleCount += 1
@@ -125,7 +130,9 @@ def run(tmpDir, PatchImport, VerboseMode):
                     audioFile.seek(24)
                     sampleRate.append(int.from_bytes(audioFile.read(4), "little"))
                     audioFile.seek(chnkOff + 20)
-                    rootKey.append(int.from_bytes(audioFile.read(4), "little"))
+                    root_key = int.from_bytes(audioFile.read(4), "little")
+                    print(">>> root_key(smpl):" + str(root_key))
+                    rootKey.append(root_key)
                     fineTuneResult = 1024 + round(float(int.from_bytes(audioFile.read(4), "little")) * 1024 / 100)
                     smplVol.append(127)
                     if chnkOff + 64 < len(audioRead):
@@ -134,8 +141,12 @@ def run(tmpDir, PatchImport, VerboseMode):
                         smplDelay.append(0)
                         smplStartN.append(0)
                         smplLoopType.append(int.from_bytes(audioFile.read(4), "little"))
-                        smplLoop.append(int.from_bytes(audioFile.read(4), "little"))
-                        smplEnd.append(int.from_bytes(audioFile.read(4), "little"))
+                        sample_loop_start = int.from_bytes(audioFile.read(4), "little")
+                        print(">>> smplLoop(smpl):" + str(sample_loop_start))
+                        smplLoop.append(sample_loop_start)
+                        sample_loop_end = int.from_bytes(audioFile.read(4), "little")
+                        print(">>> smplLoopEnd(smpl):" + str(sample_loop_end))
+                        smplEnd.append(sample_loop_end)
                         loopTuneResult = 1024 + round(float(int.from_bytes(audioFile.read(4), "little")) * 1024 / 100)
                     else:
                         smplLoopType.append(0)
@@ -148,7 +159,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                         loopTuneResult = 1024
                     fineTune.append(fineTuneResult)
                     loopTune.append(loopTuneResult)
-        
+
                     if sampleRate[sampleCount] != romSR:
                         pitchFix = 12 * math.log(sampleRate[sampleCount] / romSR, 2)
                         pitchFixStep = math.floor(pitchFix)
@@ -161,10 +172,11 @@ def run(tmpDir, PatchImport, VerboseMode):
                     elif fineTune[sampleCount] >= 2048:
                         rootKey[sampleCount] -= 1
                         fineTune[sampleCount] -= 1024
-                
+
                 for multiname in sorted(os.listdir(os.getcwd())):
                     if multiCount == 254 : continue
                     if multiname.endswith(".sfz"):
+                        # print("    -- check in sfz " + multiname)
                         sfzFile = open(os.getcwd() + foldersplit + multiname, "r")
                         sfzText = "   \n" + sfzFile.read()
                         sfzFile.close()
@@ -173,7 +185,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                             for i in range(min(16, len(RegionList) - 1)):
                                 if "=" + filename in RegionList[i + 1] and dataChunkValid == False:
                                     buff = int(dataSz / bitRate)
-                                    
+
                                     audioFile.seek(24)
                                     sampleRatePrep = (int.from_bytes(audioFile.read(4), "little"))
                                     if "loop_mode=loop_sustain" in RegionList[i + 1] or "loop_mode=loop_continuous" in RegionList[i + 1]:
@@ -195,6 +207,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                                     rootKeyPrep = 60
                                     if len(rootKeyFind) > 0:
                                         rootKeyPrep = (int(rootKeyFind[0]))
+                                    print("** found rootKeyPrep: " + str(rootKeyPrep))
 
                                     smplDelayFind = re.findall('delay_samples=(\\d+)', RegionList[i + 1])
                                     smplDelayPrep = 0
@@ -205,22 +218,22 @@ def run(tmpDir, PatchImport, VerboseMode):
                                     smplStartPrep = 0
                                     if len(smplStartFind) > 0:
                                         smplStartPrep = (int(smplStartFind[0]))
-                                        
+
                                     smplLoopFind = re.findall('loop_start=(\\d+)', RegionList[i + 1])
                                     smplLoopPrep = (buff - 2)
                                     if len(smplLoopFind) > 0 and ("loop_mode=loop_sustain" in RegionList[i + 1] or "loop_mode=loop_continuous" in RegionList[i + 1]):
                                         smplLoopPrep = (int(smplLoopFind[0]))
-                                        
+
                                     smplEndFind = re.findall('loop_end=(\\d+)', RegionList[i + 1])
                                     smplEndPrep = (buff - 1)
                                     if len(smplEndFind) > 0 and ("loop_mode=loop_sustain" in RegionList[i + 1] or "loop_mode=loop_continuous" in RegionList[i + 1]):
                                         smplEndPrep = (int(smplEndFind[0]))
-                                        
+
                                     smplVolFind = re.findall('amplitude=(\\d+.?\\d*)', RegionList[i + 1])
                                     smplVolPrep = 127
                                     if len(smplVolFind) > 0:
                                         smplVolPrep = (round(float(max(0,min(100,float(smplVolFind[0])))) * 1.27))
-                        
+
                                     smplTuneFind = re.findall('\ntune=(-?\\d+.?\\d*)', RegionList[i + 1])
                                     if len(smplTuneFind) > 0:
                                         fineTuneResult = 1024 + round(float(smplTuneFind[0]) * 1024 / 100)
@@ -229,7 +242,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                                         loopTuneResult = 1024 + round(float(loopTuneFind[0]) * 1024 / 100)
 
                                     duped = False
-        
+
                                     if sampleRatePrep != romSR:
                                         pitchFix = 12 * math.log(sampleRatePrep / romSR, 2)
                                         pitchFixStep = math.floor(pitchFix)
@@ -252,11 +265,11 @@ def run(tmpDir, PatchImport, VerboseMode):
 
                                     if duped == True:
                                         continue
-                                    
+
                                     sampleCount += 1
                                     dataChunkList.append(dataChunkValid)
                                     sampleIDs.append("=" + filename)
-                                    
+
                                     sampleRate.append(sampleRatePrep)
                                     smplLoopType.append(smplLoopTypePrep)
                                     rootKey.append(rootKeyPrep)
@@ -266,10 +279,10 @@ def run(tmpDir, PatchImport, VerboseMode):
                                     smplLoop.append(smplLoopPrep)
                                     smplEnd.append(smplEndPrep)
                                     smplVol.append(smplVolPrep)
-                                    
+
                                     fineTune.append(fineTuneResult)
                                     loopTune.append(loopTuneResult)
-        
+
                 audioFile.close()
                 #if smplLoopType[sampleCount] == 1:
                     #print("WARNING: ping-pong looping not fully supported!")
@@ -288,7 +301,7 @@ def run(tmpDir, PatchImport, VerboseMode):
                     return
 
                 template.seek(math.ceil(template.tell() / 32) * 32)
-                
+
                 templateCoef.write(coefIn.read())
                 template.write(deltaIn.read())
                 coefIn.close()
@@ -345,17 +358,17 @@ def run(tmpDir, PatchImport, VerboseMode):
                 for i in range(12 - len(multiName)):
                     multiName = multiName + " "
             print(multiName)
-            
+
             multiCount += 1
             sfzFile = open(sourceDir + foldersplit + filename, "r")
             sfzText = "   \n" + sfzFile.read()
             sfzFile.close()
-            
+
             sampleNum = [65535,65535,65535,65535,65535,65535,65535,65535,
                      65535,65535,65535,65535,65535,65535,65535,65535]
             sampleHiInt = [127,127,127,127,127,127,127,127,
                        127,127,127,127,127,127,127,127]
-            
+
             RegionList = sfzText.split("<region>")
             if len(RegionList) > 1:
                 for i in range(min(16, len(RegionList) - 1)):
@@ -385,12 +398,12 @@ def run(tmpDir, PatchImport, VerboseMode):
                                                 sampleNum[i] = j
                                 else:
                                     sampleNum[i] = j
-                                    
-        
+
+
                     sampleHi = re.findall("hikey=[0-9]+",RegionList[i + 1])
                     if len(sampleHi) > 0:
                         sampleHiInt[i] = int(((sampleHi[0]).split("="))[1])
-            
+
 
             multiTable.write(multiName.encode("ascii"))
             for i in range(16):
@@ -459,7 +472,7 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.seek(102 + 1048576)
         template.write(b'\x00\x00')
     patch2080Offset = patch990Offset
-    
+
     template.seek(128 + 1048576 * 2)
     template.write(patch990Offset.to_bytes(4,"big"))
     template.write(patch990Offset.to_bytes(4,"big"))
@@ -483,7 +496,7 @@ def run(tmpDir, PatchImport, VerboseMode):
         template.write(patch2080Offset.to_bytes(4,"big"))
         template.seek(102 + 1048576 * 2)
         template.write(b'\x00\x00')
-    
+
 
     template.close()
 

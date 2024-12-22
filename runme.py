@@ -13,12 +13,15 @@ Folder = ""
 FinalFile = ""
 VerboseMode = False
 PatchImport = False
+SimulationMode = False
+
 if len(sys.argv) > 1:
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', type=str, default='input', help='Input folder')
     parser.add_argument('-o', '--output', type=str, default='Final', help='Output filename')
     parser.add_argument('-p', '--patches', action='store_true', help='Import patches')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
+    parser.add_argument('-s', '--simulation', action='store_true', help='Simulation (list only)')
     args = parser.parse_args()
     Folder = args.input
     if args.output.split('.')[0] == "Result":
@@ -27,6 +30,7 @@ if len(sys.argv) > 1:
         FinalFile = args.output.split('.')[0] + ".bin"
     PatchImport = args.patches
     VerboseMode = args.verbose
+    SimulationMode = args.simulation
 else:
     Folder = input("Enter the name of the relative folder to import into a ROM image: ")
     FinalFile = input("Enter the name of the resulting filename: ")
@@ -54,12 +58,14 @@ for path, dirc, files in os.walk(tmpDir):
     for name in sorted(files):
         if name.endswith(".wav"):
             shutil.copy(Folder + pathDiv + name, tmpDir + pathDiv + name)
-        
+
 ROMImport.run(tmpDir, PatchImport, VerboseMode)
-ROMScramble.run("Result.bin", FinalFile)
+if not SimulationMode:
+    ROMScramble.run("Result.bin", FinalFile)
 
 #os.remove("sampleList.txt")
 os.remove("SampleTable.bin")
 os.remove("MultiTable.bin")
+os.remove("Result.bin")
 shutil.rmtree(tmpDir)
 print("Done!")
