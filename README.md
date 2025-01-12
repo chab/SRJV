@@ -1,5 +1,9 @@
 # SRJV
 
+**IMPORTANT about this fork** : tested ok on a JV-1080, but the same card in a JD-990 has issues with loops (clicky loops or glitchly noise).
+
+Hints: WAV and SFZ from official cards (extracted with script in this repo) works well on the JD-990, only the custom ones have glitches. An the original wav do not seem to contain "smpl" metadata, so that would be a possible hint : findind a tool that remove the "smpl" metadata, and using root key and loop points only in the SFZ. If anyone finds a solution for JD-990, i'm interested.
+
 ## Notes from chab (macOs)
 
 ```
